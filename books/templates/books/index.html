@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Библиотека (SQLite / JSON / XML)</title>
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <h2 class="mb-4">Управление библиотекой</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Форма добавления -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">Добавить запись</div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        {{ form.title.label_tag }} {{ form.title }}
+                        <div class="text-danger small">{{ form.title.errors }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.author.label_tag }} {{ form.author }}
+                        <div class="text-danger small">{{ form.author.errors }}</div>
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.genre.label_tag }} {{ form.genre }}
+                        <div class="text-danger small">{{ form.genre.errors }}</div>
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.year.label_tag }} {{ form.year }}
+                        <div class="text-danger small">{{ form.year.errors }}</div>
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.storage.label_tag }} {{ form.storage }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success mt-3">Сохранить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Переключатель источника и AJAX-поиск -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div class="btn-group">
+            <a href="?source=db" class="btn btn-outline-primary {% if source == 'db' %}active{% endif %}">База данных (SQLite)</a>
+            <a href="?source=json" class="btn btn-outline-primary {% if source == 'json' %}active{% endif %}">Файл JSON</a>
+            <a href="?source=xml" class="btn btn-outline-primary {% if source == 'xml' %}active{% endif %}">Файл XML</a>
+        </div>
+
+        {% if source == 'db' %}
+            <input type="text" id="search-input" class="form-control w-auto" style="min-width: 280px;" placeholder="AJAX-поиск по БД...">
+        {% endif %}
+    </div>
+
+    <!-- Таблица -->
+    <table class="table table-bordered table-hover bg-white shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Название</th>
+                <th>Автор</th>
+                <th>Жанр</th>
+                <th>Год</th>
+                {% if source == 'db' %}<th>Действия</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody id="books-tbody">
+            {% for book in books %}
+            <tr>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author }}</td>
+                <td>{{ book.genre }}</td>
+                <td>{{ book.year }}</td>
+                {% if source == 'db' %}
+                <td>
+                    <a href="{% url 'edit_book' book.id %}" class="btn btn-sm btn-warning">Редактировать</a>
+                    <form action="{% url 'delete_book' book.id %}" method="post" class="d-inline" onsubmit="return confirm('Удалить запись?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">Данных нет</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if source == 'db' %}
+<script>
+document.getElementById('search-input').addEventListener('input', function() {
+    fetch(`/ajax/search/?q=${encodeURIComponent(this.value)}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('books-tbody');
+            tbody.innerHTML = '';
+            if (data.results.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Ничего не найдено</td></tr>';
+                return;
+            }
+            data.results.forEach(book => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${book.title}</td>
+                        <td>${book.author}</td>
+                        <td>${book.genre}</td>
+                        <td>${book.year}</td>
+                        <td>
+                            <a href="/edit/${book.id}/" class="btn btn-sm btn-warning">Редактировать</a>
+                            <form action="/delete/${book.id}/" method="post" class="d-inline" onsubmit="return confirm('Удалить запись?');">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>`;
+            });
+        });
+});
+</script>
+{% endif %}
+</body>
+</html>
