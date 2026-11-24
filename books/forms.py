@@ -1,4 +1,6 @@
+import json
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from django import forms
 from .models import Book
@@ -33,7 +35,6 @@ class BaseBookForm(forms.ModelForm):
         }
 
     def validate_unique(self):
-        # Отключаем скрытую проверку уникальности модели, чтобы во views.py выводилось наше сообщение
         pass
 
     def clean_title(self):
@@ -73,7 +74,7 @@ class BaseBookForm(forms.ModelForm):
 
 class BookForm(BaseBookForm):
     STORAGE_CHOICES = [
-        ('db', 'База данных (SQLite)'),
+        ('db', 'База данных (PostgreSQL / SQLite)'),
         ('json', 'Файл JSON'),
         ('xml', 'Файл XML'),
     ]
@@ -86,3 +87,40 @@ class BookForm(BaseBookForm):
 
 class EditBookForm(BaseBookForm):
     pass
+
+
+class UploadFileForm(forms.Form):
+    file = forms.FileField(
+        label="Выберите файл (.json или .xml)",
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': '.json,.xml'
+        })
+    )
+
+    def clean_file(self):
+        uploaded_file = self.cleaned_data.get('file')
+        if not uploaded_file:
+            raise forms.ValidationError("Файл не выбран.")
+
+        filename = uploaded_file.name.lower()
+        if not (filename.endswith('.json') or filename.endswith('.xml')):
+            raise forms.ValidationError("Разрешена загрузка только файлов формата .json или .xml.")
+
+        content = uploaded_file.read().decode('utf-8', errors='strict')
+        uploaded_file.seek(0)
+
+        if filename.endswith('.json'):
+            try:
+                data = json.loads(content)
+                if not isinstance(data, list):
+                    raise forms.ValidationError("JSON-файл должен содержать список записей (массив объектов).")
+            except json.JSONDecodeError:
+                raise forms.ValidationError("Ошибка чтения: файл содержит некорректный JSON.")
+        elif filename.endswith('.xml'):
+            try:
+                ET.fromstring(content)
+            except ET.ParseError:
+                raise forms.ValidationError("Ошибка чтения: файл содержит некорректный XML.")
+
+        return uploaded_file

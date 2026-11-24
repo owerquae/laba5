@@ -3,7 +3,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Библиотека (SQLite / JSON / XML)</title>
+    <title>Библиотека (БД / JSON / XML)</title>
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
@@ -20,7 +20,7 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Форма добавления -->
+    <!-- Форма добавления записи -->
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-primary text-white">Добавить запись</div>
         <div class="card-body">
@@ -52,12 +52,32 @@
         </div>
     </div>
 
+    <!-- Форма загрузки файла JSON/XML на сервер -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">Загрузить файл JSON / XML на сервер</div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        {{ upload_form.file.label_tag }}
+                        {{ upload_form.file }}
+                        <div class="text-danger small">{{ upload_form.file.errors }}</div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" name="upload_submit" class="btn btn-primary">Загрузить файл</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Переключатель источника и AJAX-поиск -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div class="btn-group">
-            <a href="?source=db" class="btn btn-outline-primary {% if source == 'db' %}active{% endif %}">База данных (SQLite)</a>
-            <a href="?source=json" class="btn btn-outline-primary {% if source == 'json' %}active{% endif %}">Файл JSON</a>
-            <a href="?source=xml" class="btn btn-outline-primary {% if source == 'xml' %}active{% endif %}">Файл XML</a>
+            <a href="?source=db" class="btn btn-outline-primary {% if source == 'db' %}active{% endif %}">База данных</a>
+            <a href="?source=json" class="btn btn-outline-primary {% if source == 'json' %}active{% endif %}">Файлы JSON</a>
+            <a href="?source=xml" class="btn btn-outline-primary {% if source == 'xml' %}active{% endif %}">Файлы XML</a>
         </div>
 
         {% if source == 'db' %}
